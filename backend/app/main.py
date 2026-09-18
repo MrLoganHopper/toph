@@ -42,11 +42,19 @@ async def integrity_error(request:Request,_exc:IntegrityError):
     return error_response(request,409,'CONFLICT','A name is already used or a historical reference prevents this change.')
 
 @app.exception_handler(SQLAlchemyError)
-async def database_error(request:Request,exc:SQLAlchemyError):
-    logger.error(json.dumps({'request_id':getattr(request.state,'request_id',''),'type':type(exc).__name__}))
-    import traceback
-    traceback.print_exc()
-    return error_response(request,503,'DATABASE_UNAVAILABLE','The database is temporarily unavailable. Check the server configuration and retry.',True)
+async def database_error(request: Request, exc: SQLAlchemyError):
+    logger.exception(
+        "DATABASE ERROR request_id=%s original=%r",
+        getattr(request.state, "request_id", ""),
+        getattr(exc, "orig", exc),
+    )
+    return error_response(
+        request,
+        503,
+        "DATABASE_UNAVAILABLE",
+        "The database is temporarily unavailable. Check the server configuration and retry.",
+        True,
+    )
 
 @app.exception_handler(Exception)
 async def unexpected_error(request:Request,exc:Exception):
