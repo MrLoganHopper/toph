@@ -1,0 +1,25 @@
+import { Fragment,useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { CalendarDays,ClipboardCheck,Percent,RefreshCw } from 'lucide-react';
+import { api,queryString } from '../../api/client';
+import type { DashboardResult,LogItem,Page } from '../../api/types';
+import { useFarm } from '../auth/Auth';
+import { useFilters } from '../logs/filters';
+import { FiltersBar,SearchBox } from '../logs/FiltersBar';
+import { LogDetailView } from '../logs/LogDetailView';
+import { Busy,Button,Empty,ErrorBox,dateLabel,timeLabel } from '../../components/ui';
+export default function DashboardPage() {
+  const farm = useFarm(); const state = useFilters('this_month');
+  const query = useQuery({queryKey:[farm.userId,farm.farmId,'dashboard',state.filters],queryFn:({signal}) => api<DashboardResult>(`${farm.path}/dashboard${queryString(state.filters)}`,{signal})});
+  const [opened,setOpened] = useState<string | null>(null),[extra,setExtra] = useState<{fingerprint:string;items:LogItem[];cursor:string | null} | null>(null),[loadingMore,setLoadingMore] = useState(false),[moreError,setMoreError] = useState<unknown>();
+  const fingerprint = JSON.stringify(state.filters); const extraPage = extra?.fingerprint === fingerprint ? extra : null;
+  const metrics = query.data?.metrics; const rows = [...(query.data?.logs.items || []),...(extraPage?.items || [])];
+  const unique = [...new Map(rows.map(row => [row.id,row])).values()];
+  const cursor = extraPage ? extraPage.cursor : query.data?.logs.next_cursor;
+  const loadMore = async () => { if (!cursor) return; setLoadingMore(true); try { const page = await api<Page<LogItem>>(`${farm.path}/logs${queryString({...state.filters,cursor})}`); setExtra({fingerprint,items:[...(extraPage?.items || []),...page.items],cursor:page.next_cursor}); } catch(e) { setMoreError(e); } finally { setLoadingMore(false); } };
+  return <><header className="page-heading"><div><h1>Dashboard</h1><p>An overview of your farm and employee activity</p></div><SearchBox state={state}/></header><div className="metric-grid">
+    <div className="metric-card" title="Successfully generated reports recorded today in the farm timezone. Unaffected by the table filters."><div><CalendarDays size={17}/> Today's Recordings</div><strong>{metrics?.recordings_today ?? '–'}</strong></div>
+    <div className="metric-card" title="Distinct enabled workers scheduled at the server's current time. Planned assignments, not attendance. Unaffected by filters."><div><ClipboardCheck size={17}/> Scheduled Now</div><strong>{metrics?.scheduled_workers_now ?? '–'}</strong></div>
+    <div className="metric-card" title="Mean model-estimated extraction confidence across every matching report, not just this page. This is not measured accuracy."><div><Percent size={17}/> Extraction Confidence</div><div className="metric-value"><strong>{metrics ? metrics.average_extraction_confidence === null ? 'No data' : `${Math.round(metrics.average_extraction_confidence*100)}%` : '–'}</strong>{metrics && metrics.confidence_sample_size > 0 && <span>{metrics.confidence_sample_size} reports · model estimate</span>}</div></div>
+  </div><section className="dashboard-table"><FiltersBar state={state} title="Recent Employee Logs" total={query.data?.logs.total_matching}/>{query.isPending ? <Busy label="Loading your dashboard..."/> : query.error ? <ErrorBox error={query.error} retry={() => { query.refetch(); }}/> : <div className="table-scroll"><table className="logs-table"><thead><tr><th>Employee</th><th>Activity / Fertilizer</th><th>Date</th><th>Field</th><th>Scheduled time</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{unique.map(log => <Fragment key={log.id}><tr className={opened === log.id ? 'expanded-row' : ''}><td>{log.employee.name}</td><td><span>{log.activity?.name || 'Not identified'}</span><small>Fertilizer: {log.fertilizer?.name || 'None identified'}</small></td><td>{dateLabel(log.recorded_at,farm.data.farm.timezone)}</td><td>{log.field?.name || 'Not identified'}</td><td>{log.scheduled_shift ? `${timeLabel(log.scheduled_shift.start_at,farm.data.farm.timezone)} - ${timeLabel(log.scheduled_shift.end_at,farm.data.farm.timezone)}` : 'No linked shift'}</td><td><Button aria-expanded={opened === log.id} onClick={() => setOpened(opened === log.id ? null : log.id)}>{opened === log.id ? 'Close' : 'View'}</Button></td></tr>{opened === log.id && <tr className="expanded-detail-row"><td colSpan={6}><LogDetailView id={log.id}/></td></tr>}</Fragment>)}</tbody></table>{unique.length === 0 && <Empty title="No matching reports">Your reports will appear here once a worker saves a recording and generates a report.</Empty>}</div>}</section><div className="page-footer"><Button onClick={() => { setExtra(null); query.refetch(); }} disabled={query.isFetching}><RefreshCw size={14}/>Refresh</Button>{cursor && <Button disabled={loadingMore} onClick={() => { loadMore(); }}>{loadingMore ? 'Loading...' : 'Load more logs'}</Button>}<span className="muted small">Farm timezone: {farm.data.farm.timezone}</span></div>{!!moreError && <ErrorBox error={moreError}/>}</>;
+}

@@ -1,0 +1,4 @@
+import type {LogItem} from '../../api/types';
+import {useFarm} from '../auth/Auth';
+import {dateLabel} from '../../components/ui';
+export function LogCards({items,open}:{items:LogItem[];open:(id:string)=>void}){const farm=useFarm();return <div className="log-grid">{items.map(log=><button className="log-card" key={log.id} onClick={()=>open(log.id)} aria-label={`Open ${log.activity?.name||'work'} report by ${log.employee.name}`}><h3>{log.activity?.name||'Activity unknown'}</h3><p className="employee-name">{log.employee.name}</p><p className="card-fertilizer">Fertilizer: {log.fertilizer?.name||'None identified'}</p>{log.tags.length>0&&<div className="card-tags">{log.tags.map(tag=><span key={tag.id}>{tag.name}</span>)}</div>}<div className="card-bottom"><span>{log.field?.name||'Field not identified'}</span><time dateTime={log.recorded_at}>{dateLabel(log.recorded_at,farm.data.farm.timezone)}</time></div></button>)}</div>;}

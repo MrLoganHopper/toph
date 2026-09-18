@@ -1,0 +1,409 @@
+{
+  "title": "Farm app endpoint inventory and implementation contract",
+  "version": "1.1 draft",
+  "note": "Not an OpenAPI document. Generate actual OpenAPI from FastAPI/Pydantic in the implementation.",
+  "rules": [
+    "Every authenticated mutation requires session and CSRF verification.",
+    "Path farm_id is checked against current enabled membership.",
+    "Safe DTOs never serialize password_hash, session hashes, or provider secrets.",
+    "No async job status, audit, view, event, or message endpoints."
+  ],
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/healthz",
+      "permission": "public",
+      "function": "Liveness check without sensitive configuration.",
+      "inputs": "none",
+      "outputs": "{\"ok\":true}",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "permission": "public; Origin checked",
+      "function": "Verify credentials and issue a new cookie session.",
+      "inputs": "LoginInput: username, password",
+      "outputs": "AuthResult: safe user, enabled memberships with farm summaries, csrf_token, password-change requirement; Set-Cookie header",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "permission": "authenticated",
+      "function": "Restore frontend identity and current memberships.",
+      "inputs": "session cookie",
+      "outputs": "AuthResult; no password hash or raw session token",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "permission": "authenticated + CSRF",
+      "function": "Revoke current session and clear cookie.",
+      "inputs": "empty body",
+      "outputs": "no body",
+      "success_status": 204
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/change-password",
+      "permission": "authenticated + CSRF",
+      "function": "Verify current password; change hash; revoke old sessions and rotate current one.",
+      "inputs": "current_password, new_password",
+      "outputs": "AuthResult and replacement session cookie",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}",
+      "permission": "member",
+      "function": "Read current farm.",
+      "inputs": "path farm_id",
+      "outputs": "Farm: id, name, timezone, created_at, updated_at",
+      "success_status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/farms/{farm_id}",
+      "permission": "admin",
+      "function": "Edit farm name/timezone.",
+      "inputs": "name and/or timezone",
+      "outputs": "updated Farm",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/bootstrap",
+      "permission": "member",
+      "function": "Load role-specific initialization data.",
+      "inputs": "optional local_date YYYY-MM-DD; defaults to farm-local today",
+      "outputs": "user, farm, membership, fields, activities, fertilizers, own scheduled shifts; admins also get worker filter options and tags",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/members",
+      "permission": "admin",
+      "function": "List employees and admins.",
+      "inputs": "role?, enabled?, q?, cursor?, limit 1..100",
+      "outputs": "Page<Member>: user id/name/username, membership id/role/enabled",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/members",
+      "permission": "admin",
+      "function": "Create a new user and farm membership atomically.",
+      "inputs": "name, username, role admin|worker",
+      "outputs": "safe Member and temporary_password returned once",
+      "success_status": 201
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/farms/{farm_id}/members/{membership_id}",
+      "permission": "admin",
+      "function": "Change role or farm access; protect last admin.",
+      "inputs": "role? and/or is_enabled?",
+      "outputs": "updated Member",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/members/{membership_id}/reset-password",
+      "permission": "admin",
+      "function": "Reset an eligible farm-confined worker account.",
+      "inputs": "empty body",
+      "outputs": "temporary_password and must_change_password:true, returned once",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/fields",
+      "permission": "member",
+      "function": "List field metadata for settings and selection.",
+      "inputs": "cursor?, limit 1..100",
+      "outputs": "Page<FieldSummary>: id, name",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/fields/geojson",
+      "permission": "member",
+      "function": "Load field polygons for maps.",
+      "inputs": "cursor?, limit 1..50; optional field_id",
+      "outputs": "GeoJSON FeatureCollection with next_cursor; top-level farm_bbox",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/fields/{field_id}",
+      "permission": "member",
+      "function": "Read one field including boundary.",
+      "inputs": "path field_id",
+      "outputs": "Field with GeoJSON geometry",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/fields",
+      "permission": "admin",
+      "function": "Create field from supplied boundary.",
+      "inputs": "name, geometry: Polygon or MultiPolygon GeoJSON",
+      "outputs": "Field with normalized MultiPolygon",
+      "success_status": 201
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/farms/{farm_id}/fields/{field_id}",
+      "permission": "admin",
+      "function": "Edit field name and/or geometry.",
+      "inputs": "name?, geometry?",
+      "outputs": "updated Field",
+      "success_status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/farms/{farm_id}/fields/{field_id}",
+      "permission": "admin",
+      "function": "Delete only an unreferenced field.",
+      "inputs": "path field_id",
+      "outputs": "no body; 409 if referenced",
+      "success_status": 204
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/activities",
+      "permission": "member",
+      "function": "List task vocabulary.",
+      "inputs": "cursor?, limit 1..100",
+      "outputs": "Page<Activity>: id, name",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/fertilizers",
+      "permission": "member",
+      "function": "List fertilizer vocabulary.",
+      "inputs": "cursor?, limit 1..100",
+      "outputs": "Page<Fertilizer>: id, name",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/activities",
+      "permission": "admin",
+      "function": "Create task type, not a scheduled task instance.",
+      "inputs": "name",
+      "outputs": "Activity",
+      "success_status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/fertilizers",
+      "permission": "admin",
+      "function": "Create fertilizer category/product.",
+      "inputs": "name",
+      "outputs": "Fertilizer",
+      "success_status": 201
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/farms/{farm_id}/activities/{activity_id}",
+      "permission": "admin",
+      "function": "Rename a task type.",
+      "inputs": "name",
+      "outputs": "Activity",
+      "success_status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/farms/{farm_id}/fertilizers/{fertilizer_id}",
+      "permission": "admin",
+      "function": "Rename a fertilizer category/product.",
+      "inputs": "name",
+      "outputs": "Fertilizer",
+      "success_status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/farms/{farm_id}/activities/{activity_id}",
+      "permission": "admin",
+      "function": "Delete only an unreferenced task type.",
+      "inputs": "path activity_id",
+      "outputs": "no body; 409 if referenced",
+      "success_status": 204
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/farms/{farm_id}/fertilizers/{fertilizer_id}",
+      "permission": "admin",
+      "function": "Delete only an unreferenced fertilizer category/product.",
+      "inputs": "path fertilizer_id",
+      "outputs": "no body; 409 if referenced",
+      "success_status": 204
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/shifts",
+      "permission": "member; workers self-only",
+      "function": "Read planned schedule with interval-overlap filtering.",
+      "inputs": "from, to, employee_id?, cursor?, limit 1..100",
+      "outputs": "Page<Shift>: planned start/end, employee, optional field/activity/fertilizer/fertilizer/fertilizer/fertilizer",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/shifts",
+      "permission": "admin",
+      "function": "Create a scheduled assignment.",
+      "inputs": "employee_id, start_at, end_at, field_id:null|UUID, activity_id:null|UUID, fertilizer_id:null|UUID, fertilizer_id:null|UUID",
+      "outputs": "Shift",
+      "success_status": 201
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/farms/{farm_id}/shifts/{shift_id}",
+      "permission": "admin",
+      "function": "Edit planned assignment; preserve referenced identity.",
+      "inputs": "start_at?, end_at?, field_id?, activity_id?, fertilizer_id?; employee_id change only if unreferenced",
+      "outputs": "Shift",
+      "success_status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/farms/{farm_id}/shifts/{shift_id}",
+      "permission": "admin",
+      "function": "Delete an unreferenced scheduled assignment.",
+      "inputs": "path shift_id",
+      "outputs": "no body; 409 if linked to a log",
+      "success_status": 204
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/realtime/client-secret",
+      "permission": "member",
+      "function": "Mint short-lived voice credential using fixed server instructions.",
+      "inputs": "optional own shift_id; no arbitrary model/instructions",
+      "outputs": "client_secret, expires_at, configured model, interview_version; no permanent provider key",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/recordings",
+      "permission": "member; own recording",
+      "function": "Persist immutable recording metadata and transcript before AI work.",
+      "inputs": "RecordingInput; client_submission_id required",
+      "outputs": "RecordingReceipt: id, recorded_at, uploaded_at, linked_log_id; 200 on identical retry",
+      "success_status": "201 or 200"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/recordings/{recording_id}",
+      "permission": "admin or owning worker",
+      "function": "Recover recording receipt/details after interrupted submission.",
+      "inputs": "path recording_id",
+      "outputs": "RecordingDetail, including transcript and computed linked_log_id",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/recordings/{recording_id}/upload-url",
+      "permission": "owning member",
+      "function": "Create or renew restricted direct-upload authorization.",
+      "inputs": "empty body; reject if already confirmed",
+      "outputs": "url, method:POST, fields, expires_at, max_size_bytes",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/recordings/{recording_id}/complete",
+      "permission": "owning member",
+      "function": "Verify S3 object, pin version, and record upload receipt.",
+      "inputs": "empty body",
+      "outputs": "RecordingReceipt with uploaded_at set; repeat is safe",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/logs",
+      "permission": "admin or owning worker",
+      "function": "Synchronously generate and persist a report from a confirmed recording.",
+      "inputs": "recording_id, shift_id:null|UUID",
+      "outputs": "LogDetail; 201 new, 200 identical retry; never 202",
+      "success_status": "201 or 200"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/logs",
+      "permission": "admin or worker self-only",
+      "function": "Reusable filtered query for dashboard, activity/fertilizer grid, map sidebar, and history.",
+      "inputs": "LogFilters, cursor?, limit 1..100",
+      "outputs": "Page<LogListItem> with total_matching and next_cursor",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/logs/{log_id}",
+      "permission": "admin or owning worker",
+      "function": "Read full report without creating a view/read event.",
+      "inputs": "path log_id",
+      "outputs": "LogDetail with summary, answers, transcript, recording metadata, tags, field geometry, and scheduled shift",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/logs/{log_id}/audio-url",
+      "permission": "admin or owning worker",
+      "function": "Authorize temporary browser playback of the pinned private recording.",
+      "inputs": "path log_id",
+      "outputs": "url, expires_at, content_type, duration_ms",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/dashboard",
+      "permission": "admin",
+      "function": "Return explicit dashboard metrics and the first filtered report page.",
+      "inputs": "LogFilters; no cursor; initial limit default 25",
+      "outputs": "DashboardResult: as_of, timezone, metrics, metric_scopes, logs",
+      "success_status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/farms/{farm_id}/tags",
+      "permission": "member",
+      "function": "Read farm tag catalog.",
+      "inputs": "cursor?, limit 1..100",
+      "outputs": "Page<Tag>: id, name",
+      "success_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/farms/{farm_id}/tags",
+      "permission": "admin",
+      "function": "Create a tag.",
+      "inputs": "name",
+      "outputs": "Tag; duplicate same-farm name returns 409",
+      "success_status": 201
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/farms/{farm_id}/logs/{log_id}/tags/{tag_id}",
+      "permission": "admin",
+      "function": "Attach an existing same-farm tag idempotently.",
+      "inputs": "empty body",
+      "outputs": "updated list of tags on the log",
+      "success_status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/farms/{farm_id}/logs/{log_id}/tags/{tag_id}",
+      "permission": "admin",
+      "function": "Remove tag attachment idempotently.",
+      "inputs": "empty body",
+      "outputs": "no body",
+      "success_status": 204
+    }
+  ]
+}

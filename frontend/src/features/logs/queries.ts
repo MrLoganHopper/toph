@@ -1,0 +1,7 @@
+import {useQuery,useInfiniteQuery} from '@tanstack/react-query';
+import {api,queryString} from '../../api/client';
+import type {GeoCollection,LogDetail,LogFilters,LogItem,Page} from '../../api/types';
+import {useFarm} from '../auth/Auth';
+export function useLogs(filters:LogFilters,limit=25){const farm=useFarm();return useInfiniteQuery({queryKey:[farm.userId,farm.farmId,'logs',filters,limit],initialPageParam:null as string|null,queryFn:({pageParam,signal})=>api<Page<LogItem>>(`${farm.path}/logs${queryString({...filters,limit,cursor:pageParam})}`,{signal}),getNextPageParam:last=>last.next_cursor||undefined});}
+export function useLog(id:string){const farm=useFarm();return useQuery({queryKey:[farm.userId,farm.farmId,'log',id],queryFn:({signal})=>api<LogDetail>(`${farm.path}/logs/${id}`,{signal})});}
+export function useGeometry(){const farm=useFarm();return useQuery({queryKey:[farm.userId,farm.farmId,'geometry'],queryFn:async({signal})=>{let cursor:string|null=null;let first:GeoCollection|null=null;const features:GeoCollection['features']=[];const seen=new Set<string>();do{const result:GeoCollection=await api<GeoCollection>(`${farm.path}/fields/geojson${queryString({limit:50,cursor})}`,{signal});first??=result;features.push(...result.features);cursor=result.next_cursor;if(cursor){if(seen.has(cursor))throw new Error('The map API repeated a pagination cursor.');seen.add(cursor);}}while(cursor);return {...first!,features,next_cursor:null};}});}

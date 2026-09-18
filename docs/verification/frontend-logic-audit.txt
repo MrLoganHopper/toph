@@ -1,0 +1,33 @@
+PASS preset all
+PASS preset today
+PASS preset this_week
+PASS preset this_month
+PASS preset last_day
+PASS preset last_week
+PASS preset last_month
+PASS prototype preset rejected
+PASS activity and fertilizer independent
+PASS no stale cursor/unknown sort
+PASS search limit
+PASS explicit interval
+PASS waveform missing is valid
+PASS waveform finite and bounded
+PASS waveform bins
+PASS waveform cap
+PASS invalid waveform target 0
+PASS invalid waveform target -1
+PASS invalid waveform target 513
+PASS invalid waveform target 1.5
+PASS MP4 feature detection
+PASS WebM feature detection
+PASS unsupported MIME visible
+PASS missing MediaRecorder visible
+PASS direct upload then confirmation then extraction
+PASS confirmed retry skips upload
+PASS existing report rechecks explicit shift
+PASS extraction timeout retains draft
+PASS failed upload retains draft
+PASS incomplete transcript stops submission
+PASS missing transcript is not invented
+PASS cleanup failure preserves confirmed server success
+32 source-level frontend logic checks passed. TypeScript transpilation with mocked API/storage/media boundaries; not a React/Vite build or Vitest execution.

@@ -1,0 +1,25 @@
+[
+  {
+    "AllowedOrigins": [
+      "http://localhost:5173",
+      "https://YOUR-FRONTEND.vercel.app"
+    ],
+    "AllowedMethods": [
+      "POST",
+      "GET",
+      "HEAD"
+    ],
+    "AllowedHeaders": [
+      "*"
+    ],
+    "ExposeHeaders": [
+      "ETag",
+      "Content-Type",
+      "Content-Length",
+      "Content-Range",
+      "Accept-Ranges",
+      "x-amz-version-id"
+    ],
+    "MaxAgeSeconds": 600
+  }
+]

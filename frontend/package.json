@@ -1,0 +1,46 @@
+{
+  "name": "toph-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "preview": "vite preview",
+    "generate:types": "openapi-typescript ../docs/openapi.json -o src/api/generated.d.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "5.2.5",
+    "@js-temporal/polyfill": "0.5.1",
+    "@tanstack/react-query": "5.80.7",
+    "lucide-react": "0.511.0",
+    "maplibre-gl": "5.5.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-router-dom": "6.30.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.28.0",
+    "@playwright/test": "1.52.0",
+    "@types/geojson": "7946.0.16",
+    "@types/node": "22.15.30",
+    "@types/react": "19.1.6",
+    "@types/react-dom": "19.1.6",
+    "@vitejs/plugin-react": "4.5.1",
+    "eslint": "9.28.0",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "globals": "16.2.0",
+    "openapi-typescript": "7.8.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.33.1",
+    "vite": "6.3.5",
+    "vitest": "3.2.2"
+  }
+}

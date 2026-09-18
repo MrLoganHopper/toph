@@ -1,0 +1,19 @@
+................................................................ssssssss [ 77%]
+sssssss..............                                                    [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_postgis_integration.py:57: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:66: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:73: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:83: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:94: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:103: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:109: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:118: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:127: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:145: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:161: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:168: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:182: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:205: TEST_DATABASE_URL not configured; actual PostGIS is required
+SKIPPED [1] tests/test_postgis_integration.py:216: TEST_DATABASE_URL not configured; actual PostGIS is required
+78 passed, 15 skipped in 0.83s
