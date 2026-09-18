@@ -86,7 +86,14 @@ def geojson(cursor:str|None=None,limit:int=Query(50,ge=1,le=50),field_id:UUID|No
         recheck(conn,ctx)
         base=table.c.farm_id==ctx.farm_id;where=base if field_id is None else base&(table.c.id==field_id)
         result=service.page(conn,select(table.c.id,table.c.name,func.ST_AsGeoJSON(table.c.geometry).label('geometry')).where(where),select(func.count()).select_from(table).where(where),['geojson',str(ctx.farm_id),str(field_id)],cursor,limit,table.c.id)
-        box=conn.execute(select(func.ST_XMin(func.ST_Extent(table.c.geometry)),func.ST_YMin(func.ST_Extent(table.c.geometry)),func.ST_XMax(func.ST_Extent(table.c.geometry)),func.ST_YMax(func.ST_Extent(table.c.geometry))).where(base)).one()
+        box=conn.execute(
+    select(
+        func.ST_XMin(func.ST_Envelope(func.ST_Collect(table.c.geometry))),
+        func.ST_YMin(func.ST_Envelope(func.ST_Collect(table.c.geometry))),
+        func.ST_XMax(func.ST_Envelope(func.ST_Collect(table.c.geometry))),
+        func.ST_YMax(func.ST_Envelope(func.ST_Collect(table.c.geometry))),
+    ).where(base)
+).one()
         features=[{'type':'Feature','id':str(r['id']),'properties':{'id':str(r['id']),'name':r['name']},'geometry':json.loads(r['geometry'])} for r in result['items']]
         return {'type':'FeatureCollection','features':features,'farm_bbox':list(box) if box[0] is not None else None,'next_cursor':result['next_cursor']}
 
