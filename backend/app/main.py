@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+import traceback
 from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -43,6 +44,8 @@ async def integrity_error(request:Request,_exc:IntegrityError):
 @app.exception_handler(SQLAlchemyError)
 async def database_error(request:Request,exc:SQLAlchemyError):
     logger.error(json.dumps({'request_id':getattr(request.state,'request_id',''),'type':type(exc).__name__}))
+    import traceback
+    traceback.print_exc()
     return error_response(request,503,'DATABASE_UNAVAILABLE','The database is temporarily unavailable. Check the server configuration and retry.',True)
 
 @app.exception_handler(Exception)
